@@ -16,29 +16,29 @@ This is a RESTful web application using the Python framework Flask along with im
 - security.py
 - views.py
 - static
-	-- styles.css
+	* styles.css
 - templates
-	-- index.html
-	-- publicindex.html
-	-- itemlist.html
-	-- login.html
-	-- newcategory.html
-	-- item.html
-	-- publicitem.html
-	-- signup.html
-	-- newitem.html
-	-- deleteitem.html
-	-- edititem.html
-	-- latestitemlist.html
-	-- main.html
-	-- header.html
+	* index.html
+	* publicindex.html
+	* itemlist.html
+	* login.html
+	* newcategory.html
+	* item.html
+	* publicitem.html
+	* signup.html
+	* newitem.html
+	* deleteitem.html
+	* edititem.html
+	* latestitemlist.html
+	* main.html
+	* header.html
 	
 
 ## Prequisition
 To run this application successfully, you should install below packages:
 `pip install Flask`
 
-To enable google sign in, you should place a file named `client_secret_google.json` in the same folder where views.py resides
+To enable google sign in, you should place a file named `client_secret_google.json` in the same folder where views.py resides.
 In `client_secret_google.json`, google client id and password should be included
 
 
