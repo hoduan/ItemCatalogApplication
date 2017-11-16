@@ -47,5 +47,5 @@ In `client_secret_google.json`, google client id and password should be included
 `python views.py`
 
 The default port numer is: 5000
-
+And after the application run, the database will be created automtically
 
