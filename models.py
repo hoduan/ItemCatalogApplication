@@ -112,7 +112,7 @@ class Item(Base):
         def serialize(self):
                 return {
                         'id': self.id,
-                        'Title': self.name,
+                        'title': self.name,
                         'description': self.description,
 			'category_id': self.category_id,
 			'user_id': self.user_id

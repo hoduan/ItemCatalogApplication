@@ -455,7 +455,7 @@ def get_auth_token():
 	token = g.user.generate_auth_token()
 	return jsonify({'token': token.decode('ascii')})
 
-@app.route('/catalog.json')
+@app.route('/json/catalog')
 @auth.login_required
 def showAllItmesJSON():
 	categories = session.query(Category).all()
@@ -466,6 +466,21 @@ def showAllItmesJSON():
 		results.append({"id": category.id, "name": category.name, "description": category.description, "items":[item.serialize for item in items]})
 			
 	return jsonify(catogories = [result for result in results])
+
+
+@app.route('/json/<string:category_name>')
+@auth.login_required
+def showItemsInACategoryJSON(category_name):
+	category = session.query(Category).filter_by(name=category_name).first()
+	items = session.query(Item).filter_by(category_id=category.id).all()
+	return jsonify(items = [item.serialize for item in items])
+
+@app.route('/json/<string:category_name>/<string:item_name>')
+@auth.login_required
+def showItemJSON(category_name, item_name):
+	categories = session.query(Category).filter_by(name=category_name).first()
+	item = session.query(Item).filter_by(name=item_name).first()
+	return jsonify(item=item.serialize)
 
 
 #user helper function
