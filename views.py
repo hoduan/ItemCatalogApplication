@@ -1,5 +1,6 @@
-from models import Base, User, Category, Item, User_Profile, Google_Account, Facebook_Account
-from flask import Flask, flash, make_response, render_template, redirect,request, jsonify, url_for, g, abort
+from models import Base, User, Category, Item, User_Profile, Google_Account
+from flask import Flask, flash, make_response, render_template, redirect
+from falsk import request, jsonify, url_for, g, abort
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -21,7 +22,8 @@ session = DBSession()
 app = Flask(__name__)
 app.secret_key = "testing"
 
-CLIENT_ID = json.loads(open('client_secret_google.json', 'r').read())['web']['client_id']
+CLIENT_ID = json.loads(open('google.json', 'r').read())['web']['client_id']
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -36,12 +38,14 @@ def login():
 			return redirect(url_for('login'))
 	else: 
 		return render_template('login.html', STATE=state)
+
+
 @auth.verify_password
 def verify_password(email_or_token, password):
 	# try to see if it is a token first
 	user_id = User.verify_auth_token(email_or_token)
 	if user_id:
-		user = session.query(User).filter_by(user_profile_id = user_id).one()
+		user = session.query(User).filter_by(user_profile_id=user_id).one()
 	else:
 		user = session.query(User).filter_by(email=email_or_token).first()
 		if not user or not user.verify_password(password):
@@ -49,6 +53,7 @@ def verify_password(email_or_token, password):
 	
 	g.user = user
 	return True
+
 		
 def userLogin(email, password):
 	if email is None or email == "" or password is None or password == "":
@@ -64,6 +69,7 @@ def userLogin(email, password):
 	login_session['picture'] = user.picture
 	return True
 
+
 def verify_password_format(password):
 	if(len(password) < 8 or len(password) > 20):
 		return False
@@ -78,16 +84,17 @@ def verify_email_format(email):
 		return True
 	return False
 
+
 @app.route('/fbconnect', methods=['GET', 'POST'])
 def fbconnect():
-	#validate state token
+	# validate state token
 	if request.args.get('state') != login_session['state']:
                 response = make_response(json.dumps('Invalid state token'), 401)
                 response.headers['Content-Type'] = 'application/json'
                 return response
 	
 	access_token = request.data
-	#exchange a long live token
+	# exchange a long live token
 	app_id = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_id']
         app_secret = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_secret']
         url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' %(app_id, app_secret, access_token)
@@ -108,14 +115,14 @@ def fbconnect():
 	login_session['firstname'] = data['name']
 	login_session['lastname'] = data['name']
 
-	#get user picture
+	# get user picture
         url = 'https://graph.facebook.com/v2.8/me/picture?access_token=%s&redirect=0&height=200&width=200' % token
         h = httplib2.Http()
         result = h.request(url, 'GET')[1]
         data = json.loads(result)
         login_session['picture'] = data["data"]["url"]
 
-        #check if user exist
+        # check if user exist
         uid = getUserID(login_session['email'])
         if not uid:
                 uid = createUserFromFacebook(login_session)
@@ -129,18 +136,19 @@ def fbconnect():
         flash("You are now logged in as %s" % login_session['username'])
         return output
 
+
 @app.route('/gconnect', methods=['GET', 'POST'])
 def gconnect():
-	#validate state token
+	# validate state token
 	if request.args.get('state') != login_session['state']:
 		response = make_response(json.dumps('Invalid state token'), 401)
 		response.headers['Content-Type'] = 'application/json'
 		return response
 
-	#obtain one time authorization code
+	# obtain one time authorization code
 	code = request.data
 	try:
-		#upgrade the authorization code into a credential object
+		# upgrade the authorization code into a credential object
 		oauth_flow = flow_from_clientsecrets('client_secret_google.json', scope='profile', redirect_uri='postmessage')
 		credentials = oauth_flow.step2_exchange(code)
 			
@@ -149,18 +157,18 @@ def gconnect():
                 response.headers['Content-Type'] = 'application/json'
                 return response
 	access_token = credentials.access_token
-	#check tha access token is valid to avoid confused deputy problem vulnerability
+	# check tha access token is valid to avoid confused deputy problem vulnerability
 	url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s'% access_token)
         h = httplib2.Http()
         result = json.loads(h.request(url, 'GET')[1])
 
-	#if there was an error in the access token
+	# if there was an error in the access token
         if(result.get('error') is not None):
                 response = make_response(json.dumps(result.get('error')), 500)
                 response.headers['Content-Type'] = 'application/json'
                 return response
 
-	#verify the access token is used for the intended user
+	# verify the access token is used for the intended user
         gplus_id = credentials.id_token['sub']
 	if result['sub'] != gplus_id:
 		response = make_response(
@@ -180,11 +188,11 @@ def gconnect():
 		response = make_response(json.dumps('Current user is already connected.'),200)
                 response.headers['Content-Type'] = 'application/json'
                 return response
-	#store the accress token in the session for later use
+	# store the accress token in the session for later use
         login_session['access_token'] = credentials.access_token
-        #login_session['gplus_id'] = gplus_id
+        # login_session['gplus_id'] = gplus_id
 	
-	#get user info
+	# get user info
 	userinfo_url = "https://www.googleapis.com/plus/v1/people/me"
 	params={'access_token': credentials.access_token, 'alt':'json'}
 	answer = requests.get('https://www.googleapis.com/plus/v1/people/me', params=params)
@@ -197,7 +205,7 @@ def gconnect():
 	login_session['google_id'] = data['id']
 	login_session['firstname'] = data['name'].get('givenName')
 	login_session['lastname'] = data['name'].get('familyName')	
-	#see if user exist in the database, if not, then make a new one
+	# see if user exist in the database, if not, then make a new one
 	uid = getUserID(login_session['email'])
 	if uid is None:
 		uid = createUserFromGoogle(login_session)
@@ -216,7 +224,7 @@ def gconnect():
 @app.route('/fbdisconnect')
 def fbdisconnect():
 	facebook_id = login_session['facebook_id']
-        #the access token must be included to successfull log out
+        # the access token must be included to successfull log out
         access_token = login_session['access_token']
         url = "https://graph.facebook.com/%s/permissions?access_token=%s" %(facebook_id, access_token)
         h = httplib2.Http()
@@ -235,6 +243,7 @@ def fbdisconnect():
 		return True
 	else:
 		return False
+
 
 @app.route('/gdiconnect')
 def gdisconnect():
@@ -260,6 +269,7 @@ def gdisconnect():
 	else:
 		flash("problem while logout")
 		return False
+
 
 @app.route('/logout')
 def logout():
@@ -314,6 +324,7 @@ def catalogHandler():
 	else:
 		return render_template('index.html', categories=categories, items=allitems)
 
+
 @app.route('/category', methods=['GET', 'POST'])
 def newCategory():
 	if 'username' not in login_session:
@@ -321,7 +332,6 @@ def newCategory():
 	if request.method == "GET":
 		return render_template("newcategory.html")
 	else:
-		#todo: add falsh message and stay ont he same page even name already exist
 		name = request.form.get("name")
 		desc = request.form.get("desc")
 		find_name = session.query(Category).filter_by(name=name).first()
@@ -343,7 +353,6 @@ def newItem():
 	if request.method == "GET":
                 return render_template("newitem.html", categories=categories)
         else:
-                #todo: add falsh message and stay ont he same page even name already exist
                 name = request.form.get("name")
                 desc = request.form.get("desc")
 		cat = request.form.get("select")
@@ -363,6 +372,7 @@ def newItem():
 		flash("Item %s created successfully!" %(name))
                 return render_template("newitem.html", categories=categories)
 
+
 @app.route('/catalog/<string:category_name>/items')
 def showItemList(category_name):
 	categories = session.query(Category).all()
@@ -373,7 +383,7 @@ def showItemList(category_name):
 
 @app.route('/catalog/<string:category_name>/<string:item_name>')
 def showItem(category_name, item_name):
-	#if user login in show edit and delete button url_for('publicitem.html')
+	# if user login in show edit and delete button url_for('publicitem.html')
 	# otherwies, show the public version url_for('item.html')
 	category = session.query(Category).filter_by(name=category_name).first()
 	if not category:
@@ -425,6 +435,7 @@ def editItem(category_name, item_name):
 		
 		return redirect(url_for('catalogHandler'))	
 
+
 @app.route('/catalog/<string:category_name>/<string:item_name>/delete', methods=['GET', 'POST'])
 def deleteItem(category_name, item_name):
 	if 'username' not in login_session:
@@ -449,11 +460,13 @@ def deleteItem(category_name, item_name):
 		flash("Item %s deleted from the database" %item_name)
 		return redirect(url_for('catalogHandler'))
 
+
 @app.route('/token')
 @auth.login_required
 def get_auth_token():
 	token = g.user.generate_auth_token()
 	return jsonify({'token': token.decode('ascii')})
+
 
 @app.route('/json/catalog')
 @auth.login_required
@@ -475,6 +488,7 @@ def showItemsInACategoryJSON(category_name):
 	items = session.query(Item).filter_by(category_id=category.id).all()
 	return jsonify(items = [item.serialize for item in items])
 
+
 @app.route('/json/<string:category_name>/<string:item_name>')
 @auth.login_required
 def showItemJSON(category_name, item_name):
@@ -483,7 +497,7 @@ def showItemJSON(category_name, item_name):
 	return jsonify(item=item.serialize)
 
 
-#user helper function
+# user helper function
 def createUserFromGoogle(login_session):
 	new_user_profile = User_Profile(first_name = login_session['firstname'], last_name = login_session['lastname'],username=login_session['username'], email=login_session['email'].decode('utf-8'))
 	session.add(new_user_profile)
@@ -495,7 +509,7 @@ def createUserFromGoogle(login_session):
 	return user.id
 
 
-#user helper function
+# user helper function
 def createUserFromFacebook(login_session):
         new_user_profile = User_Profile(first_name = login_session['firstname'], last_name = login_session['lastname'],username=login_session['username'], email=login_session['email'].decode('utf-8'))
         session.add(new_user_profile)
@@ -507,12 +521,10 @@ def createUserFromFacebook(login_session):
         return user.id
 
 
-def createUser():
-	pass
-
 def getUserInfo(user_id):
 	user = session.query(User_Profile).filter_by(id=user_id).frist()
 	return user
+
 
 def getUserID(mail):
 	try:
@@ -549,7 +561,7 @@ def signup():
 			return "Password not match"
 	
 		
-		#check if user profile with the same email address exist or not in the database
+		# check if user profile with the same email address exist or not in the database
 		user = session.query(User_Profile).filter_by(email=email).first()
 		if user is not None:
 			flash ("Operation failed: email address %s already exist in the database" %email)
