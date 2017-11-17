@@ -6,7 +6,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from flask_httpauth import HTTPBasicAuth
 from flask import session as login_session
-import random, string
+import random
+import string
 import httplib2
 from oauth2client.client import flow_from_clientsecrets, FlowExchangeError
 import json
@@ -27,7 +28,8 @@ CLIENT_ID = json.loads(open('google.json', 'r').read())['web']['client_id']
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-	state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+	state = ''.join(random.choice(string.ascii_uppercase + string.digits) \
+		for x in xrange(32))
 	login_session['state'] = state
 	if request.method == 'POST':
 		email = request.form.get('email')
@@ -61,7 +63,8 @@ def userLogin(email, password):
 		return False
 	user = session.query(User).filter_by(email=email).first()
 	if not user or not user.verify_password(password):
-		flash("Sorry, we weren't able to find the email address and password combination you entered")
+		flash("Sorry, we weren't able to find the email address and \
+			 password combination you entered")
 		return False;
 	login_session['user_id'] = user.user_profile_id
 	login_session['email'] = email
@@ -97,7 +100,8 @@ def fbconnect():
 	# exchange a long live token
 	app_id = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_id']
         app_secret = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_secret']
-        url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' %(app_id, app_secret, access_token)
+        url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token\
+		&client_id=%s&client_secret=%s&fb_exchange_token=%s' %(app_id, app_secret, access_token)
         h = httplib2.Http()
         result = h.request(url, 'GET')[1]
         userinfor_url = "https://graph.facebook.com/v2.8/me"
@@ -555,7 +559,8 @@ def signup():
 			return "Email format is not correct, please enter valid email address"
 
 		if (not verify_password_format(password)):
-			return "Password must contains 8-20 alphanumeric characters, no special characters are allowed!"
+			return "Password must contains 8-20 alphanumeric characters, \
+				no special characters are allowed!"
 		
 		if password != password_confirm:
 			return "Password not match"
@@ -577,10 +582,11 @@ def signup():
 		session.add(new_user)
 		session.commit()
 		
-		flash ("User %s created successfully! You can login in now by clicking the Login link on the upper right corner!" %(email))
+		flash ("User %s created successfully! You can login in now by clicking the Login \
+			link on the upper right corner!" % (email))
 		return redirect('signup')
 		
 
-if  __name__ == '__main__':
-        app.debug = True
-        app.run(host='0.0.0.0', port=5000)
+if __name__ == '__main__':
+	app.debug = True
+	app.run(host='0.0.0.0', port=5000)
