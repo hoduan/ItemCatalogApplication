@@ -36,7 +36,14 @@ This is a RESTful web application using the Python framework Flask along with im
 
 ## Prequisition
 To run this application successfully, you should install below packages:
+
 `pip install Flask`
+`pip install SQLAlchemy`
+`pip install passlib`
+`pip install flask_httpauth`
+`pip install httplib2`
+`pip install --upgrade oauth2client`
+`pip install requests`
 
 To enable google sign in, you should place a file named `client_secret_google.json` in the same folder where views.py resides.
 In `client_secret_google.json`, google client id and password should be included
