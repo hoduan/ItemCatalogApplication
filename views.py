@@ -1,6 +1,6 @@
 from models import Base, User, Category, Item, User_Profile, Google_Account
 from flask import Flask, flash, make_response, render_template, redirect
-from falsk import request, jsonify, url_for, g, abort
+from flask import request, jsonify, url_for, g, abort
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -28,17 +28,17 @@ CLIENT_ID = json.loads(open('google.json', 'r').read())['web']['client_id']
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-	state = ''.join(random.choice(string.ascii_uppercase + string.digits) \
-		for x in xrange(32))
+	state = ''.join(random.choice(string.ascii_uppercase + string.digits)\
+	for x in xrange(32))
 	login_session['state'] = state
 	if request.method == 'POST':
 		email = request.form.get('email')
 		password = request.form.get('pwd')
-		if(userLogin(email, password)): 
+		if(userLogin(email, password)):
 			return redirect(url_for('catalogHandler'))
 		else:
 			return redirect(url_for('login'))
-	else: 
+	else:
 		return render_template('login.html', STATE=state)
 
 
@@ -56,7 +56,7 @@ def verify_password(email_or_token, password):
 	g.user = user
 	return True
 
-		
+	
 def userLogin(email, password):
 	if email is None or email == "" or password is None or password == "":
 		flash("Email or Password is empty")
@@ -64,7 +64,7 @@ def userLogin(email, password):
 	user = session.query(User).filter_by(email=email).first()
 	if not user or not user.verify_password(password):
 		flash("Sorry, we weren't able to find the email address and \
-			 password combination you entered")
+		password combination you entered")
 		return False;
 	login_session['user_id'] = user.user_profile_id
 	login_session['email'] = email
@@ -92,7 +92,7 @@ def verify_email_format(email):
 def fbconnect():
 	# validate state token
 	if request.args.get('state') != login_session['state']:
-                response = make_response(json.dumps('Invalid state token'), 401)
+                response = make_response(json.dumps('Invalid token'), 401)
                 response.headers['Content-Type'] = 'application/json'
                 return response
 	
@@ -153,7 +153,7 @@ def gconnect():
 	code = request.data
 	try:
 		# upgrade the authorization code into a credential object
-		oauth_flow = flow_from_clientsecrets('client_secret_google.json', scope='profile', redirect_uri='postmessage')
+		oauth_flow = flow_from_clientsecrets('google.json', scope='profile', redirect_uri='postmessage')
 		credentials = oauth_flow.step2_exchange(code)
 			
 	except FlowExchangeError:
