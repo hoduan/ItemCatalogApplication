@@ -56,6 +56,66 @@ def verify_password(email_or_token, password):
     return True
 
 
+@app.route('/oauth/<provider>', methods = ['POST'])
+def oauth_login(provider):
+
+	#STEP 1 - Parse the auth code
+	auth_code = request.json.get('auth_code')
+
+	print "Step1 - Complete, received auth code %s" %auth_code
+	if provider == 'google':
+		 #STEP 2 - Exchange for a token
+		try:
+            	# Upgrade the authorization code into a credentials object
+            		oauth_flow = flow_from_clientsecrets('google.json', scope='')
+            		oauth_flow.redirect_uri = 'postmessage'
+            		credentials = oauth_flow.step2_exchange(auth_code)
+        	except FlowExchangeError:
+            		response = make_response(json.dumps('Failed to upgrade the authorization code.'), 401)
+            		response.headers['Content-Type'] = 'application/json'
+            		return response
+
+		# Check that the access token is valid.
+        	access_token = credentials.access_token
+        	url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s' % access_token)
+        	h = httplib2.Http()
+        	result = json.loads(h.request(url, 'GET')[1])
+        	# If there was an error in the access token info, abort.
+        	if result.get('error') is not None:
+            		response = make_response(json.dumps(result.get('error')), 500)
+            		response.headers['Content-Type'] = 'application/json'
+			return response
+		print "Step 2 Complete! Access Token : %s " % credentials.access_token
+
+		#STEP 3 - Find User or make a new one
+        
+       		#Get user info
+        	h = httplib2.Http()
+        	userinfo_url =  "https://www.googleapis.com/plus/v1/people/me"
+        	params = {'access_token': credentials.access_token, 'alt':'json'}
+        	answer = requests.get(userinfo_url, params=params)
+      
+        	data = answer.json()
+		print data
+        	name = data['displayName']
+        	#picture = data['picture']
+        	email = data['emails'][0]['value']		
+
+		#see if user exists, if it doesn't make a new one
+		user = session.query(User).filter_by(email=email).first()
+    		if user is None:
+        		#uid = createUserFromGoogle(login_session)
+			user = User(user_profile_id=1000, username=name, email=email, password_hash="111")
+			session.add(user)
+			session.commit()
+		#STEP 4 - Make token
+        	token = user.generate_auth_token(600)
+		#STEP 5 - Send back token to the client 
+        	return jsonify({'token': token.decode('ascii')})
+	
+	else:
+        	return 'Unrecoginized Provider'	
+
 def userLogin(email, password):
     if email is None or email == "" or password is None or password == "":
         flash("Email or Password is empty")
@@ -149,6 +209,12 @@ def gconnect():
 
     # obtain one time authorization code
     code = request.data
+
+    print code
+    
+    response = make_response(json.dumps('Failed to ugrade the authorization code.'), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return response
     try:
         # upgrade the authorization code into a credential object
         oauth_flow = flow_from_clientsecrets('google.json', scope='profile', redirect_uri='postmessage')
