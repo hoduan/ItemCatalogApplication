@@ -1,0 +1,7 @@
+Flask
+SQLAlchemy
+passlib
+flask_httpauth
+httplib2
+requests
+--upgrade oauth2client
