@@ -24,13 +24,13 @@ app = Flask(__name__)
 app.secret_key = "testing"
 
 CLIENT_ID = (json.loads(open('google.json', 'r').read())
-            ['web']['client_id'])
+             ['web']['client_id'])
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    state = (''.join(random.choice(string.ascii_uppercase 
-            + string.digits) for x in xrange(32)))
+    state = (''.join(random.choice(string.ascii_uppercase
+             + string.digits) for x in xrange(32)))
     login_session['state'] = state
     if request.method == 'POST':
         email = request.form.get('email')
@@ -73,14 +73,15 @@ def oauth_login(provider):
             oauth_flow.redirect_uri = 'postmessage'
             credentials = oauth_flow.step2_exchange(auth_code)
         except FlowExchangeError:
-            response = make_response(json.dumps('Failed to upgrade auth code.'), 401)
+            response = make_response(json.dumps('failed to upgrade\
+                       auth code'), 401)
             response.headers['Content-Type'] = 'application/json'
             return response
 
         # Check that the access token is valid.
         access_token = credentials.access_token
         url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s'
-	      % (access_token))
+               % (access_token))
         h = httplib2.Http()
         result = json.loads(h.request(url, 'GET')[1])
 
@@ -89,7 +90,7 @@ def oauth_login(provider):
             response = make_response(json.dumps(result.get('error')), 500)
             response.headers['Content-Type'] = 'application/json'
             return response
-        # print "Step 2 Complete! Access Token : %s " % credentials.access_token
+        # print "Step 2 Complete! Access Token: %s " % credentials.access_token
 
         # STEP 3 - Find User or make a new one
             # Get user info
@@ -162,15 +163,20 @@ def fbconnect():
 
     access_token = request.data
     # exchange a long live token
-    app_id = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_id']
-    app_secret = json.loads(open('fb_client_secret.json', 'r').read())['web']['app_secret']
-    url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (app_id, app_secret, access_token)
+    app_id = (json.loads(open('fb_client_secret.json', 'r').read())
+              ['web']['app_id'])
+    app_secret = (json.loads(open('fb_client_secret.json', 'r').read())
+                  ['web']['app_secret'])
+    url = 'https://graph.facebook.com/oauth/access_token?'
+    url += 'grant_type=fb_exchange_token&client_id=%s&client_secret=%s'
+    url += '&fb_exchange_token=%s' % (app_id, app_secret, access_token)
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
     userinfor_url = "https://graph.facebook.com/v2.8/me"
     token = result.split(',')[0].split(":")[1].replace('"', '')
 
-    url = 'https://graph.facebook.com/v2.8/me?access_token=%s&fields=name,id,email' % (token)
+    url = 'https://graph.facebook.com/v2.8/me?access_token=%s'
+    url += '&fields=name,id,email' % (token)
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
     data = json.loads(result)
@@ -183,7 +189,8 @@ def fbconnect():
     login_session['lastname'] = data['name']
 
     # get user picture
-    url = 'https://graph.facebook.com/v2.8/me/picture?access_token=%s&redirect=0&height=200&width=200' % token
+    url = 'https://graph.facebook.com/v2.8/me/picture?access_token=%s'
+    url += '&redirect=0&height=200&width=200' % token
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
     data = json.loads(result)
@@ -217,16 +224,18 @@ def gconnect():
 
     try:
         # upgrade the authorization code into a credential object
-        oauth_flow = flow_from_clientsecrets('google.json', scope='profile', redirect_uri='postmessage')
+        oauth_flow = flow_from_clientsecrets('google.json', scope='profile')
+        oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(code)
 
     except FlowExchangeError:
-        response = make_response(json.dumps('Failed to ugrade the authorization code.'), 401)
+        response = make_response(json.dumps('Failed to ugrade auth code'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
     access_token = credentials.access_token
-    # check tha access token is valid to avoid confused deputy problem vulnerability
-    url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s' % (access_token))
+    # check if access token is valid to avoid confused deputy vulnerability
+    url = 'https://www.googleapis.com/oauth2/v3/tokeninfo?'
+    url += 'access_token=%s' % (access_token)
     h = httplib2.Http()
     result = json.loads(h.request(url, 'GET')[1])
 
@@ -239,26 +248,26 @@ def gconnect():
     # verify the access token is used for the intended user
     gplus_id = credentials.id_token['sub']
     if result['sub'] != gplus_id:
-        response = make_response(json.dumps("Token's user ID doesn't match given user ID."), 401)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps("Token ID not match given ID."), 401)
+        res.headers['Content-Type'] = 'application/json'
+        return res
     # verify the access token is valid for this app
     if result['aud'] != CLIENT_ID:
-        response = make_response(json.dumps("Token's client ID does not match app's."), 401)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps("Token's ID not match app's."), 401)
+        res.headers['Content-Type'] = 'application/json'
+        return res
     stored_access_token = login_session.get('access_token')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'), 200)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps('User already connected.'), 200)
+        res.headers['Content-Type'] = 'application/json'
+        return res
     # store the accress token in the session for later use
     login_session['access_token'] = credentials.access_token
     # get user info
     userinfo_url = "https://www.googleapis.com/plus/v1/people/me"
     params = {'access_token': credentials.access_token, 'alt': 'json'}
-    answer = requests.get('https://www.googleapis.com/plus/v1/people/me', params=params)
+    answer = requests.get(userinfo_url, params=params)
     data = answer.json()
 
     login_session['username'] = data['displayName']
@@ -289,7 +298,8 @@ def fbdisconnect():
     facebook_id = login_session['facebook_id']
     # the access token must be included to successfull log out
     access_token = login_session['access_token']
-    url = "https://graph.facebook.com/%s/permissions?access_token=%s" % (facebook_id, access_token)
+    url = "https://graph.facebook.com/%s/permissions?"
+    url += "access_token=%s" % (facebook_id, access_token)
     h = httplib2.Http()
     result = h.request(url, 'DELETE')[1]
     msg = result.split(":")
@@ -316,7 +326,8 @@ def gdisconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
 
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % (access_token)
+    url = 'https://accounts.google.com/o/oauth2/revoke?'
+    url += 'token=%s' % (access_token)
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     if result['status'] == '200':
@@ -374,17 +385,17 @@ def logout():
 @app.route('/')
 @app.route('/catalog')
 def catalogHandler():
-    categories = session.query(Category).all()
+    cate = session.query(Category).all()
     items = session.query(Item).order_by(Item.id.desc()).limit(10).all()
-    allitems = []
+    it = []
     for item in items:
         cat = session.query(Category).filter_by(id=item.category_id).first()
-        allitems.append({'category': cat.name, 'item': item.name})
+        it.append({'category': cat.name, 'item': item.name})
 
     if 'username' not in login_session:
-        return render_template('publicindex.html', categories=categories, items=allitems)
+        return render_template('publicindex.html', categories=cate, items=it)
     else:
-        return render_template('index.html', categories=categories, items=allitems)
+        return render_template('index.html', categories=cate, items=it)
 
 
 @app.route('/category', methods=['GET', 'POST'])
@@ -398,7 +409,9 @@ def newCategory():
         desc = request.form.get("desc")
         find_name = session.query(Category).filter_by(name=name).first()
         if find_name:
-            flash("Operation failed: category with name %s exist already!" % (name))
+            msg = "Operation failed: category with name"
+	    msg += "%s exist already!" % (name)
+            flash(msg)
             render_template("newcategory.html")
         category = Category(name=name, description=desc)
         session.add(category)
@@ -419,16 +432,19 @@ def newItem():
         desc = request.form.get("desc")
         cat = request.form.get("select")
         if cat is None:
-            return "Operation failed, no category selected!, please select one!"
+            return "No category selected!, please select one!"
 
         cat_name = session.query(Category).filter_by(id=cat).first().name
         find_item = session.query(Item).filter_by(name=name).first()
         if find_item:
             find_cat = session.query(Category).filter_by(id=find_item.category_id).first()
             if int(find_cat.id) == int(cat):
-                flash("Operation failed: item under category %s with the name %s exist already!" % (cat_name, name))
+                msg = "Operation failed: item under category %s with the name"
+                msg += "%s exist already!" % (cat_name, name)
+                flash(msg)
                 return render_template("newitem.html", categories=categories)
-        item = Item(name=name, description=desc, category_id=cat, user_id=login_session['user_id'])
+        item = Item(name=name, description=desc, category_id=cat,
+                    user_id=login_session['user_id'])
         session.add(item)
         session.commit()
         flash("Item %s created successfully!" % (name))
@@ -440,8 +456,9 @@ def showItemList(category_name):
     categories = session.query(Category).all()
     category_obj = session.query(Category).filter_by(name=category_name).first()
     items = session.query(Item).filter_by(category_id=category_obj.id).all()
-    return render_template('itemlist.html', categories=categories, 
-                          category=category_name, items=items, count=len(items))
+    return render_template('itemlist.html', categories=categories,
+                           category=category_name,
+                           items=items, count=len(items))
 
 
 @app.route('/catalog/<string:category_name>/<string:item_name>')
@@ -451,9 +468,12 @@ def showItem(category_name, item_name):
     category = session.query(Category).filter_by(name=category_name).first()
     if not category:
         return "Operation failed: No this category %s" % (category_name)
-    item = session.query(Item).filter_by(category_id=category.id).filter_by(name=item_name).first()
+    item = session.query(Item).filter_by(category_id=category.id) \
+        .filter_by(name=item_name).first()
     if not item:
-        return "Operation failed: No this item: %s under category: %s" % (item_name, category_name)
+        res = "Operation failed: No item: "
+	res += "%s under category: %s" % (item_name, category_name)
+        return res
     if 'username' not in login_session or item.user_id != login_session['user_id']:
         return render_template("publicitem.html", item=item, category=category)
     else:
@@ -468,21 +488,27 @@ def editItem(category_name, item_name):
     editItem = session.query(Item).filter_by(name=item_name).first()
     if editItem.user_id != login_session['user_id']:
         return "<script> function myFunction() {alert('You are not authorized to edit\
-	       this item');}</script><body onload='myFunction()''>"
+                this item');}</script><body onload='myFunction()''>"
 
     if request.method == 'GET':
         category = session.query(Category).filter_by(name=category_name).first()
         if not category:
             return "Operation failed: No this category %s" % (category_name)
-        item = session.query(Item).filter_by(category_id=category.id).filter_by(name=item_name).first()
+        item = session.query(Item).filter_by(category_id=category.id)\
+		.filter_by(name=item_name).first()
         if not item:
-            return "Operation failed: No this item: %s under category: %s" % (item_name, category_name)
+            res = "Operation failed: No this item: "
+	    res += "%s under category: %s" % (item_name, category_name)
+            return res
 
         categories = session.query(Category).all()
-        return render_template('edititem.html', categories=categories, category=category, item=item)
+        return render_template('edititem.html', categories=categories,
+			 	category=category, item=item)
     else:
-        category = session.query(Category).filter_by(name=category_name).first()
-        item = session.query(Item).filter_by(category_id=category.id).filter_by(name=item_name).first()
+        category = session.query(Category).filter_by(name=category_name)\
+		.first()
+        item = session.query(Item).filter_by(category_id=category.id)\
+		.filter_by(name=item_name).first()
         name = request.form.get('name')
         desc = request.form.get('desc')
         cate = request.form.get('select')
@@ -505,15 +531,18 @@ def deleteItem(category_name, item_name):
 
     deleteItem = session.query(Item).filter_by(name=item_name).first()
     if deleteItem.user_id != login_session['user_id']:
-        return "<script> function myFunction() {alert('You are not autorized to delete this \
+        return "<script> function myFunction() {alert('You are not authorized to delete this\
                item');}</script><body onload='myFunction()'>"
 
     category = session.query(Category).filter_by(name=category_name).first()
     if not category:
-        return "Operation failed: No this category %s" % (category_name)
-    item = session.query(Item).filter_by(category_id=category.id).filter_by(name=item_name).first()
+        return "Operation failed: No category %s" % (category_name)
+    item = session.query(Item).filter_by(category_id=category.id)\
+	.filter_by(name=item_name).first()
     if not item:
-        return "Operation failed: No this item: %s under category: %s" % (item_name, category_name)
+        res = "Operation failed: No this item: "
+	res += "%s under category: %s" % (item_name, category_name)
+        return res
 
     if request.method == 'GET':
         return render_template('deleteitem.html', category=category, item=item)
@@ -539,8 +568,9 @@ def showAllItmesJSON():
 
     for category in categories:
         items = session.query(Item).filter_by(category_id=category.id).all()
-        results.append({"id": category.id, "name": category.name, "description": category.description,
-                      "items": [item.serialize for item in items]})
+        results.append({"id": category.id, "name": category.name,
+                       "description": category.description,
+                       "items": [item.serialize for item in items]})
 
     return jsonify(catogories=[result for result in results])
 
@@ -550,9 +580,9 @@ def showAllItmesJSON():
 def showItemsInACategoryJSON(category_name):
     category = session.query(Category).filter_by(name=category_name).first()
     if category is None:
-        response = make_response(json.dumps('Invalid uri, category not found'), 404)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps('Invalid uri, category not found'), 404)
+        res.headers['Content-Type'] = 'application/json'
+        return res
 
     items = session.query(Item).filter_by(category_id=category.id).all()
     return jsonify(items=[item.serialize for item in items])
@@ -563,23 +593,25 @@ def showItemsInACategoryJSON(category_name):
 def showItemJSON(category_name, item_name):
     category = session.query(Category).filter_by(name=category_name).first()
     if category is None:
-        response = make_response(json.dumps('Invalid uri, category not found'), 404)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps('Invalid uri, category not found'), 404)
+        resp.headers['Content-Type'] = 'application/json'
+        return res
 
     item = session.query(Item).filter_by(name=item_name).first()
     if item is None:
-        response = make_response(json.dumps('Invalid uri, item not found'), 404)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+        res = make_response(json.dumps('Invalid uri, item not found'), 404)
+        res.headers['Content-Type'] = 'application/json'
+        return res
 
     return jsonify(item=item.serialize)
 
 
 # user helper function
 def createUserFromOauth(login_session):
-    new_user = User(first_name=login_session['firstname'], last_name=login_session['lastname'], 
-                   username=login_session['username'], email=login_session['email'].decode('utf-8'))
+    new_user = User(first_name=login_session['firstname'],
+                    last_name=login_session['lastname'],
+                    username=login_session['username'],
+                    email=login_session['email'].decode('utf-8'))
     session.add(new_user)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).first()
@@ -594,7 +626,6 @@ def getUserInfo(user_id):
 def getUserID(mail):
     try:
         user = session.query(User).filter_by(email=mail).first()
-        user = session.query(User).filter_by(email=mail.decode('utf-8')).first()
         return user.id
     except:
         return None
@@ -615,14 +646,14 @@ def signup():
         if email is None or email == "":
             return "Missing argument, Email cannot not be empty"
 
-	if password is None or password == "":
-	    return "Missing argument, Password cannot be empty"
-        
+        if password is None or password == "":
+            return "Missing argument, Password cannot be empty"
+
         if username is None or username == "":
-          return "Missing argument, Username cannot tbe empty"
+            return "Missing argument, Username cannot tbe empty"
 
         if (not verify_email_format(email)):
-            return "Email format is not correct, please enter valid email address"
+            return "Email format not correct"
 
         if (not verify_password_format(password)):
             return ("Password must contains 8-20 alphanumeric characters,\
@@ -633,11 +664,12 @@ def signup():
         # check if user with the same email exist in the database
         user = session.query(User).filter_by(email=email).first()
         if user is not None:
-            flash("Operation failed: email address %s exist in the database" 
-                 % (email))
+            flash("Operation failed: email address %s exist in the database"
+                  % (email))
             return redirect('signup')
 
-        new_user = User(first_name=firstname, last_name=lastname, username=username, email=email)
+        new_user = User(first_name=firstname, last_name=lastname,
+                        username=username, email=email)
         new_user.hash_password(password)
         session.add(new_user)
         session.commit()
@@ -651,4 +683,3 @@ def signup():
 if __name__ == '__main__':
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
-
