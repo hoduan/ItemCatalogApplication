@@ -1,4 +1,4 @@
-from models import Base, User, Category, Item, User_Profile, Google_Account
+from models import Base, User, Category, Item
 from flask import Flask, flash, make_response, render_template, redirect
 from flask import request, jsonify, url_for, g, abort
 from sqlalchemy import create_engine
@@ -46,7 +46,7 @@ def verify_password(email_or_token, password):
     # try to see if it is a token first
     user_id = User.verify_auth_token(email_or_token)
     if user_id:
-        user = session.query(User).filter_by(user_profile_id=user_id).one()
+        user = session.query(User).filter_by(id=user_id).one()
     else:
         user = session.query(User).filter_by(email=email_or_token).first()
         if not user or not user.verify_password(password):
@@ -104,8 +104,7 @@ def oauth_login(provider):
 		#see if user exists, if it doesn't make a new one
 		user = session.query(User).filter_by(email=email).first()
     		if user is None:
-        		#uid = createUserFromGoogle(login_session)
-			user = User(user_profile_id=1000, username=name, email=email, password_hash="111")
+			user = User(username=name, email=email)
 			session.add(user)
 			session.commit()
 		#STEP 4 - Make token
@@ -121,11 +120,13 @@ def userLogin(email, password):
         flash("Email or Password is empty")
         return False
     user = session.query(User).filter_by(email=email).first()
+    print "password herer: "
+    print password
     if not user or not user.verify_password(password):
         flash("Sorry, we weren't able to find the email address and \
         password combination you entered")
         return False
-    login_session['user_id'] = user.user_profile_id
+    login_session['user_id'] = user.id
     login_session['email'] = email
     login_session['username'] = user.username
     login_session['picture'] = user.picture
@@ -187,7 +188,7 @@ def fbconnect():
     # check if user exist
     uid = getUserID(login_session['email'])
     if not uid:
-        uid = createUserFromFacebook(login_session)
+        uid = createUserFromOauth(login_session)
     login_session['user_id'] = uid
 
     output = ''
@@ -210,11 +211,6 @@ def gconnect():
     # obtain one time authorization code
     code = request.data
 
-    print code
-    
-    response = make_response(json.dumps('Failed to ugrade the authorization code.'), 401)
-    response.headers['Content-Type'] = 'application/json'
-    return response
     try:
         # upgrade the authorization code into a credential object
         oauth_flow = flow_from_clientsecrets('google.json', scope='profile', redirect_uri='postmessage')
@@ -271,7 +267,7 @@ def gconnect():
     # see if user exist in the database, if not, then make a new one
     uid = getUserID(login_session['email'])
     if uid is None:
-        uid = createUserFromGoogle(login_session)
+        uid = createUserFromOauth(login_session)
 
     login_session['user_id'] = uid
 
@@ -375,7 +371,7 @@ def logout():
 @app.route('/catalog')
 def catalogHandler():
     categories = session.query(Category).all()
-    items = session.query(Item).order_by(Item.id.desc()).limit(5).all()
+    items = session.query(Item).order_by(Item.id.desc()).limit(10).all()
     allitems = []
     for item in items:
         cat = session.query(Category).filter_by(id=item.category_id).first()
@@ -545,6 +541,10 @@ def showAllItmesJSON():
 @auth.login_required
 def showItemsInACategoryJSON(category_name):
     category = session.query(Category).filter_by(name=category_name).first()
+    if category is None:
+	response = make_response(json.dumps('Invalid uri, category not found'), 404)
+        response.headers['Content-Type'] = 'application/json'
+        return response
     items = session.query(Item).filter_by(category_id=category.id).all()
     return jsonify(items=[item.serialize for item in items])
 
@@ -552,44 +552,39 @@ def showItemsInACategoryJSON(category_name):
 @app.route('/json/<string:category_name>/<string:item_name>')
 @auth.login_required
 def showItemJSON(category_name, item_name):
-    categories = session.query(Category).filter_by(name=category_name).first()
+    category = session.query(Category).filter_by(name=category_name).first()
+    if category is None:
+        response = make_response(json.dumps('Invalid uri, category not found'), 404)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+	
     item = session.query(Item).filter_by(name=item_name).first()
+    if item is None:
+        response = make_response(json.dumps('Invalid uri, item not found'), 404)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
     return jsonify(item=item.serialize)
 
 
 # user helper function
-def createUserFromGoogle(login_session):
-    new_user_profile = User_Profile(first_name=login_session['firstname'], last_name=login_session['lastname'], username=login_session['username'], email=login_session['email'].decode('utf-8'))
-    session.add(new_user_profile)
+def createUserFromOauth(login_session):
+    new_user = User(first_name=login_session['firstname'], last_name=login_session['lastname'], username=login_session['username'], email=login_session['email'].decode('utf-8'))
+    session.add(new_user)
     session.commit()
-    user = session.query(User_Profile).filter_by(email=login_session['email']).first()
-    new_google_account = Google_Account(user_profile_id=user.id, google_id=login_session['google_id'])
-    session.add(new_google_account)
-    session.commit()
-    return user.id
-
-
-# user helper function
-def createUserFromFacebook(login_session):
-    new_user_profile = User_Profile(first_name=login_session['firstname'], last_name=login_session['lastname'], username=login_session['username'], email=login_session['email'].decode('utf-8'))
-    session.add(new_user_profile)
-    session.commit()
-    user = session.query(User_Profile).filter_by(email=login_session['email']).first()
-    new_facebook_account = Facebook_Account(user_profile_id=user.id, facebook_id=login_session['google_id'])
-    session.add(new_facebook_account)
-    session.commit()
+    user = session.query(User).filter_by(email=login_session['email']).first()
     return user.id
 
 
 def getUserInfo(user_id):
-    user = session.query(User_Profile).filter_by(id=user_id).frist()
+    user = session.query(User).filter_by(id=user_id).frist()
     return user
 
 
 def getUserID(mail):
     try:
-        user = session.query(User_Profile).filter_by(email=mail).first()
-        user = session.query(User_Profile).filter_by(email=mail.decode('utf-8')).first()
+        user = session.query(User).filter_by(email=mail).first()
+        user = session.query(User).filter_by(email=mail.decode('utf-8')).first()
         return user.id
     except:
         return None
@@ -620,20 +615,16 @@ def signup():
             return "Password not match"
 
         # check if user profile with the same email address exist or not in the database
-        user = session.query(User_Profile).filter_by(email=email).first()
+        user = session.query(User).filter_by(email=email).first()
         if user is not None:
             flash("Operation failed: email address %s already exist in the database" % (email))
             return redirect('signup')
 
-        new_user_profile = User_Profile(first_name=firstname, last_name=lastname, username=username, email=email)
-        session.add(new_user_profile)
-        session.commit()
-        user = session.query(User_Profile).filter_by(email=email).first()
-
-        new_user = User(user_profile_id=user.id, username=username, email=email, password_hash=password)
+        new_user = User(first_name=firstname, last_name=lastname, username=username, email=email)
         new_user.hash_password(password)
-        session.add(new_user)
+	session.add(new_user)
         session.commit()
+        user = session.query(User).filter_by(email=email).first()
 
         flash("User %s created successfully! You can login in now by clicking the Login \
             link on the upper right corner!" % (email))
@@ -643,4 +634,3 @@ def signup():
 if __name__ == '__main__':
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
-

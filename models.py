@@ -11,23 +11,16 @@ Base = declarative_base()
 secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
 
 
-class User_Profile(Base):
-    __tablename__ = 'user_profile'
+class User(Base):
+    __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
+    username = Column(String, nullable=False)
+    email = Column(String(250))
+    password_hash = Column(String(64))
     first_name = Column(String)
     last_name = Column(String)
     username = Column(String)
-    email = Column(String(250), unique=True)
-
-
-class User(Base):
-    __tablename__ = 'user'
-    user_profile_id = Column(Integer, ForeignKey('user_profile.id'), primary_key=True)
-    username = Column(String, nullable=False)
-    email = Column(String(250))
-    password_hash = Column(String(64), nullable=False)
     picture = Column(String(250))
-    user_profile = relationship(User_Profile)
 
     def hash_password(self, password):
         self.password_hash = pwd_context.encrypt(password)
@@ -37,7 +30,7 @@ class User(Base):
 
     def generate_auth_token(self, expiration=600):
         s = Serializer(secret_key, expires_in=expiration)
-        return s.dumps({'id': self.user_profile_id})
+        return s.dumps({'id': self.id})
 
     @staticmethod
     def verify_auth_token(token):
@@ -64,23 +57,9 @@ class User(Base):
         def serialize(self):
             return {
                 'username': self.username,
-                'id': self.user_profile_id,
+                'id': self.id,
                 'email': self.email
             }
-
-
-class Google_Account(Base):
-    __tablename__ = 'google_account'
-    user_profile_id = Column(Integer, ForeignKey('user_profile.id'), primary_key=True)
-    google_id = Column(Integer, nullable=False)
-    user_profile = relationship(User_Profile)
-
-
-class Facebook_Account(Base):
-    __tablename__ = 'facebook_account'
-    user_profile_id = Column(Integer, ForeignKey('user_profile.id'), primary_key=True)
-    facebook_id = Column(Integer, nullable=False)
-    user_profile = relationship(User_Profile)
 
 
 class Category(Base):
@@ -103,10 +82,10 @@ class Item(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(String)
-    category_id = Column(Integer, ForeignKey('category.id'))
+    category_id = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'))
     category = relationship(Category)
-    user_id = Column(Integer, ForeignKey('user_profile.id'))
-    user_profile = relationship(User_Profile)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user = relationship(User)
 
     @property
     def serialize(self):
