@@ -29,8 +29,8 @@ CLIENT_ID = (json.loads(open('google.json', 'r').read())
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    state = (''.join(random.choice(string.ascii_uppercase
-             + string.digits) for x in xrange(32)))
+    state = (''.join(random.choice(string.ascii_uppercase +
+             string.digits) for x in xrange(32)))
     login_session['state'] = state
     if request.method == 'POST':
         email = request.form.get('email')
@@ -147,7 +147,8 @@ def verify_password_format(password):
 
 
 def verify_email_format(email):
-    match = (re.match('^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$', email))
+    p = '^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$'
+    match = (re.match(p, email))
     if match:
         return True
     return False
@@ -157,9 +158,9 @@ def verify_email_format(email):
 def fbconnect():
     # validate state token
     if request.args.get('state') != login_session['state']:
-                response = make_response(json.dumps('Invalid token'), 401)
-                response.headers['Content-Type'] = 'application/json'
-                return response
+        response = make_response(json.dumps('Invalid token'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
     access_token = request.data
     # exchange a long live token
@@ -410,7 +411,7 @@ def newCategory():
         find_name = session.query(Category).filter_by(name=name).first()
         if find_name:
             msg = "Operation failed: category with name"
-	    msg += "%s exist already!" % (name)
+            msg += "%s exist already!" % (name)
             flash(msg)
             render_template("newcategory.html")
         category = Category(name=name, description=desc)
@@ -423,10 +424,10 @@ def newCategory():
 @app.route('/item', methods=['GET', 'POST'])
 def newItem():
     if 'username' not in login_session:
-                return redirect('/login')
+        return redirect('/login')
     categories = session.query(Category).all()
     if request.method == "GET":
-            return render_template("newitem.html", categories=categories)
+        return render_template("newitem.html", categories=categories)
     else:
         name = request.form.get("name")
         desc = request.form.get("desc")
@@ -437,7 +438,8 @@ def newItem():
         cat_name = session.query(Category).filter_by(id=cat).first().name
         find_item = session.query(Item).filter_by(name=name).first()
         if find_item:
-            find_cat = session.query(Category).filter_by(id=find_item.category_id).first()
+            find_cat = session.query(Category) \
+                              .filter_by(id=find_item.category_id).first()
             if int(find_cat.id) == int(cat):
                 msg = "Operation failed: item under category %s with the name"
                 msg += "%s exist already!" % (cat_name, name)
@@ -454,7 +456,9 @@ def newItem():
 @app.route('/catalog/<string:category_name>/items')
 def showItemList(category_name):
     categories = session.query(Category).all()
-    category_obj = session.query(Category).filter_by(name=category_name).first()
+    category_obj = session.query(Category) \
+                          .filter_by(name=category_name).first()
+
     items = session.query(Item).filter_by(category_id=category_obj.id).all()
     return render_template('itemlist.html', categories=categories,
                            category=category_name,
@@ -469,18 +473,20 @@ def showItem(category_name, item_name):
     if not category:
         return "Operation failed: No this category %s" % (category_name)
     item = session.query(Item).filter_by(category_id=category.id) \
-        .filter_by(name=item_name).first()
+                  .filter_by(name=item_name).first()
     if not item:
         res = "Operation failed: No item: "
-	res += "%s under category: %s" % (item_name, category_name)
+        res += "%s under category: %s" % (item_name, category_name)
         return res
-    if 'username' not in login_session or item.user_id != login_session['user_id']:
+    if ('username' not in login_session or
+            item.user_id != login_session['user_id']):
         return render_template("publicitem.html", item=item, category=category)
     else:
         return render_template("item.html", item=item, category=category)
 
 
-@app.route('/catalog/<string:category_name>/<string:item_name>/edit', methods=['GET', 'POST'])
+@app.route('/catalog/<string:category_name>/<string:item_name>/edit',
+           methods=['GET', 'POST'])
 def editItem(category_name, item_name):
     if 'username' not in login_session:
         return redirect('/login')
@@ -491,24 +497,25 @@ def editItem(category_name, item_name):
                 this item');}</script><body onload='myFunction()''>"
 
     if request.method == 'GET':
-        category = session.query(Category).filter_by(name=category_name).first()
+        category = session.query(Category).filter_by(name=category_name)\
+                          .first()
         if not category:
             return "Operation failed: No this category %s" % (category_name)
         item = session.query(Item).filter_by(category_id=category.id)\
-		.filter_by(name=item_name).first()
+                      .filter_by(name=item_name).first()
         if not item:
             res = "Operation failed: No this item: "
-	    res += "%s under category: %s" % (item_name, category_name)
+            res += "%s under category: %s" % (item_name, category_name)
             return res
 
         categories = session.query(Category).all()
         return render_template('edititem.html', categories=categories,
-			 	category=category, item=item)
+                               category=category, item=item)
     else:
         category = session.query(Category).filter_by(name=category_name)\
-		.first()
+                          .first()
         item = session.query(Item).filter_by(category_id=category.id)\
-		.filter_by(name=item_name).first()
+                      .filter_by(name=item_name).first()
         name = request.form.get('name')
         desc = request.form.get('desc')
         cate = request.form.get('select')
@@ -524,7 +531,8 @@ def editItem(category_name, item_name):
         return redirect(url_for('catalogHandler'))
 
 
-@app.route('/catalog/<string:category_name>/<string:item_name>/delete', methods=['GET', 'POST'])
+@app.route('/catalog/<string:category_name>/<string:item_name>/delete',
+           methods=['GET', 'POST'])
 def deleteItem(category_name, item_name):
     if 'username' not in login_session:
         return redirect('/login')
@@ -538,10 +546,10 @@ def deleteItem(category_name, item_name):
     if not category:
         return "Operation failed: No category %s" % (category_name)
     item = session.query(Item).filter_by(category_id=category.id)\
-	.filter_by(name=item_name).first()
+                  .filter_by(name=item_name).first()
     if not item:
         res = "Operation failed: No this item: "
-	res += "%s under category: %s" % (item_name, category_name)
+        res += "%s under category: %s" % (item_name, category_name)
         return res
 
     if request.method == 'GET':
@@ -569,8 +577,8 @@ def showAllItmesJSON():
     for category in categories:
         items = session.query(Item).filter_by(category_id=category.id).all()
         results.append({"id": category.id, "name": category.name,
-                       "description": category.description,
-                       "items": [item.serialize for item in items]})
+                        "description": category.description,
+                        "items": [item.serialize for item in items]})
 
     return jsonify(catogories=[result for result in results])
 
@@ -683,3 +691,4 @@ def signup():
 if __name__ == '__main__':
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
+    
