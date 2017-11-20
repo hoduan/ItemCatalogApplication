@@ -17,7 +17,6 @@ To access the API endpoint to get the data back in JSON format, user can do eith
 - access `/token` providing email and password to get a valid token from the server, then client can access the JSON endpoints listed above by passing along the token
 - access `/oauth/google` providing the one time authorization code from google to get a valid token from the server, then client can access the JSON endpoints listed above by passing along the token
 
-	 either provide email and password get data from `/catalog.json`, client need to provide valid email and password, or client can access `/token` first with valid email and password to get a valid token from the server, then client can access `/catalog.json` with the token 
 
 ## Python version 2.7
 
