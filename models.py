@@ -65,18 +65,18 @@ class User(Base):
 
 
 class Category(Base):
-        __tablename__ = 'category'
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        description = Column(String)
+    __tablename__ = 'category'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
 
-        @property
-        def serialize(self):
-            return {
-                'id': self.id,
-                'name': self.name,
-                'description': self.description
-            }
+    @property
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description
+        }
 
 
 class Item(Base):
