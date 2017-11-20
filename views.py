@@ -23,12 +23,14 @@ session = DBSession()
 app = Flask(__name__)
 app.secret_key = "testing"
 
-CLIENT_ID = json.loads(open('google.json', 'r').read())['web']['client_id']
+CLIENT_ID = (json.loads(open('google.json', 'r').read())
+            ['web']['client_id'])
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+    state = (''.join(random.choice(string.ascii_uppercase 
+            + string.digits) for x in xrange(32)))
     login_session['state'] = state
     if request.method == 'POST':
         email = request.form.get('email')
@@ -77,7 +79,8 @@ def oauth_login(provider):
 
         # Check that the access token is valid.
         access_token = credentials.access_token
-        url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s' % access_token)
+        url = ('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s'
+	      % (access_token))
         h = httplib2.Http()
         result = json.loads(h.request(url, 'GET')[1])
 
@@ -143,7 +146,7 @@ def verify_password_format(password):
 
 
 def verify_email_format(email):
-    match = re.match('^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$', email)
+    match = (re.match('^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$', email))
     if match:
         return True
     return False
@@ -437,7 +440,8 @@ def showItemList(category_name):
     categories = session.query(Category).all()
     category_obj = session.query(Category).filter_by(name=category_name).first()
     items = session.query(Item).filter_by(category_id=category_obj.id).all()
-    return render_template('itemlist.html', categories=categories, category=category_name, items=items, count=len(items))
+    return render_template('itemlist.html', categories=categories, 
+                          category=category_name, items=items, count=len(items))
 
 
 @app.route('/catalog/<string:category_name>/<string:item_name>')
@@ -463,7 +467,8 @@ def editItem(category_name, item_name):
 
     editItem = session.query(Item).filter_by(name=item_name).first()
     if editItem.user_id != login_session['user_id']:
-        return "<script> function myFunction() {alert('You are not authorized to edit this item');}</script><body onload='myFunction()''>"
+        return "<script> function myFunction() {alert('You are not authorized to edit\
+	       this item');}</script><body onload='myFunction()''>"
 
     if request.method == 'GET':
         category = session.query(Category).filter_by(name=category_name).first()
@@ -500,7 +505,8 @@ def deleteItem(category_name, item_name):
 
     deleteItem = session.query(Item).filter_by(name=item_name).first()
     if deleteItem.user_id != login_session['user_id']:
-        return "<script> function myFunction() {alert('You are not autorized to delete this item');}</script><body onload='myFunction()'>"
+        return "<script> function myFunction() {alert('You are not autorized to delete this \
+               item');}</script><body onload='myFunction()'>"
 
     category = session.query(Category).filter_by(name=category_name).first()
     if not category:
@@ -533,7 +539,8 @@ def showAllItmesJSON():
 
     for category in categories:
         items = session.query(Item).filter_by(category_id=category.id).all()
-        results.append({"id": category.id, "name": category.name, "description": category.description, "items": [item.serialize for item in items]})
+        results.append({"id": category.id, "name": category.name, "description": category.description,
+                      "items": [item.serialize for item in items]})
 
     return jsonify(catogories=[result for result in results])
 
@@ -571,7 +578,8 @@ def showItemJSON(category_name, item_name):
 
 # user helper function
 def createUserFromOauth(login_session):
-    new_user = User(first_name=login_session['firstname'], last_name=login_session['lastname'], username=login_session['username'], email=login_session['email'].decode('utf-8'))
+    new_user = User(first_name=login_session['firstname'], last_name=login_session['lastname'], 
+                   username=login_session['username'], email=login_session['email'].decode('utf-8'))
     session.add(new_user)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).first()
@@ -604,22 +612,29 @@ def signup():
         password = request.form.get('pwd')
         password_confirm = request.form.get('pwd_confirm')
 
-        if email is None or email == "" or password is None or password == "" or username is None or username == "":
-            return "Missing argument, Email, Username and Password field could not be empty"
+        if email is None or email == "":
+            return "Missing argument, Email cannot not be empty"
+
+	if password is None or password == "":
+	    return "Missing argument, Password cannot be empty"
+        
+        if username is None or username == "":
+          return "Missing argument, Username cannot tbe empty"
 
         if (not verify_email_format(email)):
             return "Email format is not correct, please enter valid email address"
 
         if (not verify_password_format(password)):
-            return "Password must contains 8-20 alphanumeric characters, \
-                no special characters are allowed!"
+            return ("Password must contains 8-20 alphanumeric characters,\
+                   no special characters are allowed!")
         if password != password_confirm:
             return "Password not match"
 
-        # check if user profile with the same email address exist or not in the database
+        # check if user with the same email exist in the database
         user = session.query(User).filter_by(email=email).first()
         if user is not None:
-            flash("Operation failed: email address %s already exist in the database" % (email))
+            flash("Operation failed: email address %s exist in the database" 
+                 % (email))
             return redirect('signup')
 
         new_user = User(first_name=firstname, last_name=lastname, username=username, email=email)

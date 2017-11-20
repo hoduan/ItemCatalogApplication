@@ -6,10 +6,11 @@ from passlib.apps import custom_app_context as pwd_context
 import random
 import string
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from itsdangerous BadSignature, SignatureExpired
+from itsdangerous import BadSignature, SignatureExpired
 
 Base = declarative_base()
-secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+secret_key = (''.join(random.choice(string.ascii_uppercase 
+             + string.digits) for x in xrange(32)))
 
 
 class User(Base):
@@ -83,7 +84,8 @@ class Item(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(String)
-    category_id = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'))
+    category_id = (Column(Integer, ForeignKey('category.id', 
+                  ondelete='CASCADE')))
     category = relationship(Category)
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
